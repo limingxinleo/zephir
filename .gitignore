@@ -55,3 +55,4 @@ runtime/parser.out
 
 coverage.xml
 clover.xml
+/bin/zephir-test
