@@ -1195,6 +1195,56 @@ class Compiler
     }
 
     /**
+     * Compiles and make the extension
+     *
+     * @param CommandInterface $command
+     * @param boolean $development
+     *
+     * @throws CompilerException
+     */
+    public function make(CommandInterface $command, $development = false)
+    {
+        /**
+         * Get global namespace
+         */
+        $namespace = str_replace('\\', '_', $this->checkDirectory());
+
+        @unlink("compile.log");
+        @unlink("compile-errors.log");
+        @unlink("ext/modules/" . $namespace . ".so");
+
+        $this->compile($command, $development);
+        if (Utils::isWindows()) {
+            $this->logger->output("Make is not implemented for windows yet! Aborting!");
+            exit();
+        }
+
+        $this->logger->output('Makeing...');
+
+        $gccFlags = $this->getGccFlags($development);
+
+        $currentDir = getcwd();
+        exec(
+            '(cd ext && export CC="gcc" && export CFLAGS="' . $gccFlags . '" && ' .
+            'make 2>>"' . $currentDir . '/compile-errors.log" 1>>"' . $currentDir . '/compile.log" ' ,
+            $output,
+            $exit
+        );
+
+        $fileName = $this->getConfig()->get('extension-name') ?: $namespace;
+
+        if (!file_exists("ext/modules/" . $fileName . ".so")) {
+            throw new CompilerException(
+                "Internal extension compilation failed. Check compile-errors.log for more information"
+            );
+        }
+
+        $this->logger->output('Extension Make Success!');
+        $this->logger->output('Move ' . $namespace . '.so to your extensions dir');
+        $this->logger->output('Add extension=' . $namespace . '.so to your php.ini');
+        $this->logger->output('Don\'t forget to restart your web server');
+    }
+    /**
      * Run tests
      *
      * @param CommandInterface $command
